@@ -20,6 +20,18 @@ open in Chrome or Safari, and jump straight to them with one click.
 - **Launch at login**: toggle it from the gear menu.
 - **Private**: favicons come from each site's own `/favicon.ico`; nothing goes to third parties.
 
+## Install
+
+1. Download `TabDock-<version>.dmg` from the
+   [latest release](https://github.com/cuonghx-dev/TabDock/releases/latest).
+2. Open it and drag **TabDock** onto **Applications**.
+3. TabDock is ad-hoc signed, not notarized, so macOS blocks the first launch. Either
+   right-click the app in Applications → **Open** → **Open**, or run:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/TabDock.app
+   ```
+
 ## Requirements
 
 - macOS 14 (Sonoma) or later
@@ -34,8 +46,9 @@ open build/TabDock.app
 ```
 
 `build.sh` compiles `Sources/*.swift` with `swiftc` (no Xcode project needed), writes the
-`Info.plist` and ad-hoc signs the bundle. Move `build/TabDock.app` to `/Applications` if you
-want to keep it.
+`Info.plist` and ad-hoc signs a universal (Apple silicon + Intel) bundle. `./dmg.sh` builds the
+app and packages it as `build/TabDock-<version>.dmg` (set `VERSION=x.y.z` to override).
+Move `build/TabDock.app` to `/Applications` if you want to keep it.
 
 TabDock has no Dock icon (`LSUIElement`); look for the grid icon in the menu bar.
 
