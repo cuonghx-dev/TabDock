@@ -9,7 +9,6 @@ struct TabDockApp: App {
             DockView().environmentObject(store)
         } label: {
             Image(systemName: "square.grid.2x2")
-            if store.openCount > 0 { Text("\(store.openCount)") }
         }
         .menuBarExtraStyle(.window)
     }
