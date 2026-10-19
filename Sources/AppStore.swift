@@ -9,6 +9,7 @@ final class AppStore: ObservableObject {
     @Published var apps: [WebApp] = [] { didSet { save() } }
     @Published private(set) var tabs: [TabRef] = []
     @Published private(set) var automationDenied = false
+    @Published private(set) var chromeProfiles: [ChromeProfile] = []
     @Published private(set) var lastRemoved: (app: WebApp, index: Int)?
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled {
         didSet {
@@ -40,6 +41,7 @@ final class AppStore: ObservableObject {
 
     init() {
         load()
+        reloadChromeProfiles()
         lastBrowser = UserDefaults.standard.string(forKey: "lastBrowser").flatMap(Browser.init(rawValue:))
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
@@ -95,7 +97,11 @@ final class AppStore: ObservableObject {
         if let tab = candidates {
             pollQueue.async { BrowserBridge.focus(tab) }
         } else if let url = app.openURL {
-            BrowserBridge.open(url, in: lastBrowser)
+            if let profile = app.chromeProfile {
+                BrowserBridge.open(url, chromeProfile: profile)
+            } else {
+                BrowserBridge.open(url, in: lastBrowser)
+            }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.refresh() }
     }
@@ -128,6 +134,21 @@ final class AppStore: ObservableObject {
         guard let i = apps.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         apps[i].name = trimmed.isEmpty ? nil : trimmed
+    }
+
+    func setChromeProfile(_ id: UUID, to dir: String?) {
+        guard let i = apps.firstIndex(where: { $0.id == id }) else { return }
+        apps[i].chromeProfile = dir
+    }
+
+    func profileName(of app: WebApp) -> String? {
+        guard let dir = app.chromeProfile else { return nil }
+        return chromeProfiles.first { $0.dir == dir }?.name ?? dir
+    }
+
+    func reloadChromeProfiles() {
+        let profiles = ChromeProfile.loadAll()
+        if profiles != chromeProfiles { chromeProfiles = profiles }
     }
 
     func remove(_ app: WebApp) {

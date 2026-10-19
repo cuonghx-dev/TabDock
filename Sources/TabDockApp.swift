@@ -71,7 +71,10 @@ struct DockView: View {
                 .disabled(store.lastRemoved == nil || editingNameId != nil)
                 .opacity(0)
         }
-        .onAppear { store.refresh() }
+        .onAppear {
+            store.refresh()
+            store.reloadChromeProfiles()
+        }
         .onDisappear {
             store.clearUndo()
             editingNameId = nil
@@ -191,6 +194,28 @@ struct AppRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { if !isEditing { store.activate(app) } }
+        .contextMenu { profileMenu }
+    }
+
+    @ViewBuilder private var profileMenu: some View {
+        Button("Rename") { startRename() }
+        if !store.chromeProfiles.isEmpty {
+            Picker("Chrome Profile", selection: Binding(
+                get: { app.chromeProfile },
+                set: { store.setChromeProfile(app.id, to: $0) })) {
+                Text("None (last used browser)").tag(String?.none)
+                Divider()
+                ForEach(store.chromeProfiles) { profile in
+                    Text(profile.name).tag(String?.some(profile.dir))
+                }
+            }
+            .pickerStyle(.inline)
+        }
+    }
+
+    private var subtitle: String {
+        guard let profile = store.profileName(of: app) else { return app.displayURL }
+        return "\(app.displayURL) · \(profile)"
     }
 
     @ViewBuilder private var labels: some View {
@@ -212,7 +237,7 @@ struct AppRow: View {
                     .gesture(TapGesture(count: 2).onEnded(startRename)
                         .exclusively(before: TapGesture().onEnded { store.activate(app) }))
             }
-            Text(app.displayURL)
+            Text(subtitle)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

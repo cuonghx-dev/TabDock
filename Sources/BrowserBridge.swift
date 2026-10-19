@@ -96,6 +96,22 @@ enum BrowserBridge {
         NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: NSWorkspace.OpenConfiguration())
     }
 
+    /// Open in a specific Chrome profile. `open -n` hands the arguments to a running Chrome, which
+    /// routes the URL to that profile's window. Falls back to `open(_:in:)` if Chrome is missing.
+    static func open(_ url: URL, chromeProfile: String) {
+        guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Browser.chrome.rawValue) else {
+            open(url, in: nil)
+            return
+        }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = ["-na", appURL.path, "--args", "--profile-directory=\(chromeProfile)", url.absoluteString]
+        do { try process.run() } catch {
+            NSLog("TabDock open error: \(error)")
+            open(url, in: .chrome)
+        }
+    }
+
     private static func run(_ source: String) -> (String?, Int?) {
         var error: NSDictionary?
         let result = NSAppleScript(source: source)?.executeAndReturnError(&error)

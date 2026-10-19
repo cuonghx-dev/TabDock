@@ -6,6 +6,8 @@ struct WebApp: Codable, Identifiable, Hashable {
     /// Normalized host plus optional path, e.g. `mail.google.com`. Keeps an explicit `http://`
     /// so plain-HTTP apps (localhost, intranet) still open correctly.
     var url: String
+    /// Chrome profile directory (e.g. `Profile 2`) to open this app in; nil uses the last browser.
+    var chromeProfile: String?
 
     var openURL: URL? { URL(string: url.contains("://") ? url : "https://" + url) }
 
@@ -68,6 +70,27 @@ enum Browser: String, CaseIterable, Codable {
         case .chrome: "Google Chrome"
         case .safari: "Safari"
         }
+    }
+}
+
+struct ChromeProfile: Hashable, Identifiable {
+    /// Directory name under Chrome's user data dir, passed as `--profile-directory`.
+    let dir: String
+    let name: String
+
+    var id: String { dir }
+
+    /// Profiles listed in Chrome's `Local State`, sorted by display name.
+    static func loadAll() -> [ChromeProfile] {
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Google/Chrome/Local State")
+        guard let data = try? Data(contentsOf: url),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let cache = (root["profile"] as? [String: Any])?["info_cache"] as? [String: Any] else { return [] }
+        return cache.map { dir, info in
+            ChromeProfile(dir: dir, name: (info as? [String: Any])?["name"] as? String ?? dir)
+        }
+        .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 }
 
