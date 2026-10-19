@@ -8,30 +8,37 @@ struct TabDockApp: App {
         MenuBarExtra {
             DockView().environmentObject(store)
         } label: {
-            Image(nsImage: menuBarIcon(openCount: store.openCount))
+            Image(nsImage: menuBarIcon(openCount: store.openCount, total: store.apps.count))
         }
         .menuBarExtraStyle(.window)
     }
 }
 
-/// MenuBarExtra labels drop overlays, so the open count is drawn into the icon as a superscript.
-private func menuBarIcon(openCount: Int) -> NSImage {
+/// MenuBarExtra labels drop overlays, so open/total is drawn into the icon, stacked to stay narrow.
+private func menuBarIcon(openCount: Int, total: Int) -> NSImage {
     let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
     let symbol = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "TabDock")!
         .withSymbolConfiguration(config)!
-    guard openCount > 0 else {
+    guard total > 0 else {
         symbol.isTemplate = true
         return symbol
     }
-    let badge = NSAttributedString(string: "\(openCount)", attributes: [
-        .font: NSFont.systemFont(ofSize: 9, weight: .semibold),
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.monospacedDigitSystemFont(ofSize: 8, weight: .semibold),
         .foregroundColor: NSColor.black,
-    ])
-    let badgeSize = badge.size()
-    let size = NSSize(width: symbol.size.width + badgeSize.width, height: symbol.size.height + 2)
+    ]
+    let top = NSAttributedString(string: "\(openCount)", attributes: attributes)
+    let bottom = NSAttributedString(string: "\(total)", attributes: attributes)
+    let lineHeight = top.size().height
+    let column = max(top.size().width, bottom.size().width)
+    let size = NSSize(width: symbol.size.width + 1 + column, height: max(symbol.size.height, lineHeight * 2))
     let image = NSImage(size: size, flipped: false) { _ in
-        symbol.draw(in: NSRect(origin: .zero, size: symbol.size))
-        badge.draw(at: NSPoint(x: symbol.size.width, y: size.height - badgeSize.height + 2))
+        symbol.draw(in: NSRect(origin: NSPoint(x: 0, y: (size.height - symbol.size.height) / 2), size: symbol.size))
+        let x = symbol.size.width + 1
+        top.draw(at: NSPoint(x: x + (column - top.size().width) / 2, y: size.height - lineHeight))
+        bottom.draw(at: NSPoint(x: x + (column - bottom.size().width) / 2, y: 0))
+        NSColor.black.setFill()
+        NSRect(x: x, y: size.height / 2 - 0.25, width: column, height: 0.5).fill()
         return true
     }
     image.isTemplate = true
