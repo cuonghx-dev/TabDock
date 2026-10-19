@@ -8,10 +8,34 @@ struct TabDockApp: App {
         MenuBarExtra {
             DockView().environmentObject(store)
         } label: {
-            Image(systemName: "square.grid.2x2")
+            Image(nsImage: menuBarIcon(openCount: store.openCount))
         }
         .menuBarExtraStyle(.window)
     }
+}
+
+/// MenuBarExtra labels drop overlays, so the open count is drawn into the icon as a superscript.
+private func menuBarIcon(openCount: Int) -> NSImage {
+    let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+    let symbol = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "TabDock")!
+        .withSymbolConfiguration(config)!
+    guard openCount > 0 else {
+        symbol.isTemplate = true
+        return symbol
+    }
+    let badge = NSAttributedString(string: "\(openCount)", attributes: [
+        .font: NSFont.systemFont(ofSize: 9, weight: .semibold),
+        .foregroundColor: NSColor.black,
+    ])
+    let badgeSize = badge.size()
+    let size = NSSize(width: symbol.size.width + badgeSize.width, height: symbol.size.height + 2)
+    let image = NSImage(size: size, flipped: false) { _ in
+        symbol.draw(in: NSRect(origin: .zero, size: symbol.size))
+        badge.draw(at: NSPoint(x: symbol.size.width, y: size.height - badgeSize.height + 2))
+        return true
+    }
+    image.isTemplate = true
+    return image
 }
 
 private let rowHeight: CGFloat = 40
